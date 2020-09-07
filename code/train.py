@@ -57,6 +57,43 @@ class GANTrainer(object):
             netD.cuda()
         return netG, netD
 
+    def load_network_stageII(self):
+        from model import Stage1_G, Stage2_G, Stage2_D
+        Stage1_G = Stage1_G()
+        netG = Stage2_G(Stage1_G)
+        netG.apply(weights_init)
+        print(netG)
+        if cfg.NET_G != '':
+            state_dict = \
+                torch.load(cfg.NET_G,
+                           map_location=lambda storage, loc: storage)
+            netG.load_state_dict(state_dict)
+            print('Load from: ', cfg.NET_G)
+        elif cfg.STAGE1_G != '':
+            state_dict = \
+                torch.load(cfg.STAGE1_G,
+                           map_location=lambda storage, loc: storage)
+            netG.Stage1_G.load_state_dict(state_dict)
+            print('Load from: ', cfg.STAGE1_G)
+        else:
+            print("Please give the Stage1_G path")
+            return
+
+        netD = Stage2_D()
+        netD.apply(weights_init)
+        if cfg.NET_D != '':
+            state_dict = \
+                torch.load(cfg.NET_D,
+                           map_location=lambda storage, loc: storage)
+            netD.load_state_dict(state_dict)
+            print('Load from: ', cfg.NET_D)
+        print(netD)
+
+        if cfg.CUDA:
+            netG.cuda()
+            netD.cuda()
+        return netG, netD
+
     def train(self, data_loader, stage=1):
         if stage == 1:
             netG, netD = self.load_network_stageI()
@@ -130,7 +167,6 @@ class GANTrainer(object):
                 count = count + 1
 
                 if i % 100 == 0:
-
 
                     # save the image result for each epoch
                     inputs = (txt_embedding, fixed_noise)

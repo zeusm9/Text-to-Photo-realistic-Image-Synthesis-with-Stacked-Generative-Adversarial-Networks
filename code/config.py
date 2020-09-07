@@ -13,8 +13,10 @@ DATA_DIR = ''
 VIS_COUNT = 64
 
 Z_DIM = 100
-IMSIZE = 64
-STAGE = 1
+IMSIZE = 256
+STAGE = 2
+
+STAGE1_G = '/content/output/birds__2020_09_05_15_46_24/Model/netG_epoch_600.pth'
 
 
 

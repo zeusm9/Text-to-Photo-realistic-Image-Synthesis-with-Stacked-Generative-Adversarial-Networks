@@ -49,7 +49,7 @@ class TextDataset(data.Dataset):
     def load_class_id(self, data_dir, total_num):
         if os.path.isfile(data_dir + '/class_info.pickle'):
             with open(data_dir + '/class_info.pickle', 'rb') as f:
-                class_id = pickle.load(f)
+                class_id = pickle.load(f,encoding='latin1')
         else:
             class_id = np.arange(total_num)
         return class_id
@@ -58,7 +58,7 @@ class TextDataset(data.Dataset):
         key = self.filenames[index]
         data_dir = self.data_dir
         embeddings = self.embeddings[index, :, :]
-        img_name = '%s/images/%s.jpg' % (data_dir, key)
+        img_name = '%s/CUB_200_2011/images/%s.jpg' % (data_dir, key)
         img = self.get_img(img_name)
 
         embedding_ix = random.randint(0, embeddings.shape[0] - 1)
