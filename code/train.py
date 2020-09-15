@@ -4,14 +4,22 @@ import time
 import torch.backends.cudnn as cudnn
 import torch.optim as optim
 import torch.nn as nn
-
-from torch.utils.tensorboard import SummaryWriter as summary
+import torchfile
+import numpy as np
+import pickle
+import PIL
+from PIL import Image
 from utils import mkdir_p
 from torch.autograd import Variable
+from torchvision.models.inception import inception_v3
+from scipy.stats import entropy
+from torch.nn import functional as F
+import torchvision.transforms as transforms
 
 import config as cfg
 from model import Stage1_G, Stage1_D
 from utils import weights_init, discriminator_loss, generator_loss, KL_loss, save_img_results, save_model
+
 
 
 class GANTrainer(object):
@@ -23,17 +31,30 @@ class GANTrainer(object):
             mkdir_p(self.model_dir)
             mkdir_p(self.image_dir)
             mkdir_p(self.log_dir)
-            self.summary_writer = summary()
 
+        self.gpus = [0]
         self.max_epoch = cfg.TRAIN_MAX_EPOCH
         self.snapshot_interval = cfg.TRAIN_SNAPSHOT_INTERVAL
-
-        s_gpus = cfg.GPU_ID.split(',')
-        self.gpus = [int(ix) for ix in s_gpus]
-        self.num_gpus = len(self.gpus)
-        self.batch_size = cfg.TRAIN_BATCH_SIZE * self.num_gpus
-        torch.cuda.set_device(self.gpus[0])
+        self.batch_size = cfg.TRAIN_BATCH_SIZE
+        torch.cuda.device(0)
         cudnn.benchmark = True
+
+    def get_imgs(self):
+        transform = transforms.Compose([
+            transforms.Resize(32),
+            transforms.ToTensor(),
+            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+        ])
+        imgs = []
+        for i in range(0, 2911):
+            img = Image.open("../data/models/netG_epoch_360/" + str(i) + ".png").convert('RGB')
+            load_size = int(cfg.IMSIZE * 76 / 64)
+            img = img.resize((load_size, load_size), PIL.Image.BILINEAR)
+            img = transform(img)
+            img = np.array(img)
+            #img = img.reshape(img.shape[2],img.shape[1],img.shape[0])
+            imgs.append(img)
+        return imgs
 
     def load_network_stageI(self):
         netG = Stage1_G()
@@ -187,5 +208,98 @@ class GANTrainer(object):
                     save_model(netG, netD, epoch, self.model_dir)
                 #
             save_model(netG, netD, self.max_epoch, self.model_dir)
-            #
-            self.summary_writer.close()
+
+    def inception_score(self, dataloader, cuda=True, batch_size=32, resize=False, splits=1):
+        """Computes the inception score of the generated images imgs
+        imgs -- Torch dataset of (3xHxW) numpy images normalized in the range [-1, 1]
+        cuda -- whether or not to run on GPU
+        batch_size -- batch size for feeding into Inception v3
+        splits -- number of splits
+        """
+
+        imgs = self.get_imgs()
+        N = 2912
+        # Set up dtype
+        if cuda:
+            dtype = torch.cuda.FloatTensor
+        else:
+            if torch.cuda.is_available():
+                print("WARNING: You have a CUDA device, so you should probably set cuda=True")
+            dtype = torch.FloatTensor
+
+        dataloader = torch.utils.data.DataLoader(imgs, batch_size=batch_size)
+
+        # Load inception model
+        inception_model = inception_v3(pretrained=True, transform_input=False).type(dtype)
+        inception_model.eval()
+        up = nn.Upsample(size=(299, 299),mode='bilinear', align_corners=True).type(dtype)
+
+        def get_pred(x):
+            if resize:
+                x = up(x)
+            x = inception_model(x)
+            return F.softmax(x,dim=0).data.cpu().numpy()
+
+        # Get predictions
+        preds = np.zeros((N, 1000))
+
+        for i, batch in enumerate(dataloader, 0):
+            batch = batch.type(dtype)
+            batchv = Variable(batch)
+            batch_size_i = batch.size()[0]
+            preds[i * batch_size:i * batch_size + batch_size_i] = get_pred(batchv)
+
+        # Now compute the mean kl-div
+        split_scores = []
+
+        for k in range(splits):
+            part = preds[k * (N // splits): (k + 1) * (N // splits)-1, :]
+            py = np.mean(part, axis=0)
+            scores = []
+            for i in range(part.shape[0]):
+                pyx = part[i, :]
+                ent = entropy(pyx,py)
+                scores.append(ent)
+            split_scores.append(np.exp(np.mean(scores)))
+
+        return np.mean(split_scores), np.std(split_scores)
+
+    def sample(self, data_loader, stage=1):
+        if stage == 1:
+            netG, _ = self.load_network_stageI()
+        else:
+            netG, _ = self.load_network_stageII()
+        netG.eval()
+
+        # path to save generated samples
+        save_dir = cfg.NET_G[:cfg.NET_G.find('.pth')]
+        # mkdir_p(save_dir)
+
+        nz = cfg.Z_DIM
+        batch_size = self.batch_size
+        noise = Variable(torch.FloatTensor(batch_size, nz))
+
+        count = 0
+        for i, data in enumerate(data_loader, 0):
+            real_img_cpu, txt_embedding = data
+            real_imgs = Variable(real_img_cpu)
+            txt_embedding = Variable(txt_embedding)
+
+            if cfg.CUDA:
+                real_imgs = real_imgs.cuda()
+                txt_embedding = txt_embedding.cuda()
+            noise.data.normal_(0, 1)
+            inputs = (txt_embedding, noise)
+            _, fake_imgs, mu, logvar = \
+                nn.parallel.data_parallel(netG, inputs, self.gpus)
+            for i in range(batch_size):
+                save_name = '%s/%d.png' % (save_dir, count + i)
+                im = fake_imgs[i].data.cpu().numpy()
+                im = (im + 1.0) * 127.5
+                im = im.astype(np.uint8)
+                # print('im', im.shape)
+                im = np.transpose(im, (1, 2, 0))
+                # print('im', im.shape)
+                im = Image.fromarray(im)
+                im.save(save_name)
+            count += batch_size
