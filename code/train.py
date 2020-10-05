@@ -21,7 +21,6 @@ from model import Stage1_G, Stage1_D
 from utils import weights_init, discriminator_loss, generator_loss, KL_loss, save_img_results, save_model
 
 
-
 class GANTrainer(object):
     def __init__(self, output_dir):
         if cfg.TRAIN_FLAG:
@@ -47,12 +46,11 @@ class GANTrainer(object):
         ])
         imgs = []
         for i in range(0, 2911):
-            img = Image.open("../data/models/netG_epoch_360/" + str(i) + ".png").convert('RGB')
+            img = Image.open("../data/birds/models/netG_epoch_360/" + str(i) + ".png").convert('RGB')
             load_size = int(cfg.IMSIZE * 76 / 64)
             img = img.resize((load_size, load_size), PIL.Image.BILINEAR)
             img = transform(img)
             img = np.array(img)
-            #img = img.reshape(img.shape[2],img.shape[1],img.shape[0])
             imgs.append(img)
         return imgs
 
@@ -85,15 +83,13 @@ class GANTrainer(object):
         netG.apply(weights_init)
         print(netG)
         if cfg.NET_G != '':
-            state_dict = \
-                torch.load(cfg.NET_G,
-                           map_location=lambda storage, loc: storage)
+            state_dict = torch.load(cfg.NET_G,
+                                    map_location=lambda storage, loc: storage)
             netG.load_state_dict(state_dict)
             print('Load from: ', cfg.NET_G)
         elif cfg.STAGE1_G != '':
-            state_dict = \
-                torch.load(cfg.STAGE1_G,
-                           map_location=lambda storage, loc: storage)
+            state_dict = torch.load(cfg.STAGE1_G,
+                                    map_location=lambda storage, loc: storage)
             netG.Stage1_G.load_state_dict(state_dict)
             print('Load from: ', cfg.STAGE1_G)
         else:
@@ -232,13 +228,13 @@ class GANTrainer(object):
         # Load inception model
         inception_model = inception_v3(pretrained=True, transform_input=False).type(dtype)
         inception_model.eval()
-        up = nn.Upsample(size=(299, 299),mode='bilinear', align_corners=True).type(dtype)
+        up = nn.Upsample(size=(299, 299), mode='bilinear', align_corners=True).type(dtype)
 
         def get_pred(x):
             if resize:
                 x = up(x)
             x = inception_model(x)
-            return F.softmax(x,dim=0).data.cpu().numpy()
+            return F.softmax(x, dim=0).data.cpu().numpy()
 
         # Get predictions
         preds = np.zeros((N, 1000))
@@ -253,12 +249,12 @@ class GANTrainer(object):
         split_scores = []
 
         for k in range(splits):
-            part = preds[k * (N // splits): (k + 1) * (N // splits)-1, :]
+            part = preds[k * (N // splits): (k + 1) * (N // splits) - 1, :]
             py = np.mean(part, axis=0)
             scores = []
             for i in range(part.shape[0]):
                 pyx = part[i, :]
-                ent = entropy(pyx,py)
+                ent = entropy(pyx, py)
                 scores.append(ent)
             split_scores.append(np.exp(np.mean(scores)))
 
@@ -273,7 +269,8 @@ class GANTrainer(object):
 
         # path to save generated samples
         save_dir = cfg.NET_G[:cfg.NET_G.find('.pth')]
-        # mkdir_p(save_dir)
+        if not os.path.isdir(save_dir):
+            mkdir_p(save_dir)
 
         nz = cfg.Z_DIM
         batch_size = self.batch_size
@@ -282,11 +279,9 @@ class GANTrainer(object):
         count = 0
         for i, data in enumerate(data_loader, 0):
             real_img_cpu, txt_embedding = data
-            real_imgs = Variable(real_img_cpu)
             txt_embedding = Variable(txt_embedding)
 
             if cfg.CUDA:
-                real_imgs = real_imgs.cuda()
                 txt_embedding = txt_embedding.cuda()
             noise.data.normal_(0, 1)
             inputs = (txt_embedding, noise)
@@ -297,9 +292,7 @@ class GANTrainer(object):
                 im = fake_imgs[i].data.cpu().numpy()
                 im = (im + 1.0) * 127.5
                 im = im.astype(np.uint8)
-                # print('im', im.shape)
                 im = np.transpose(im, (1, 2, 0))
-                # print('im', im.shape)
                 im = Image.fromarray(im)
                 im.save(save_name)
             count += batch_size

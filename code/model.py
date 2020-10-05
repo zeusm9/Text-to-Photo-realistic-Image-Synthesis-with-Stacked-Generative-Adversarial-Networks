@@ -277,6 +277,7 @@ class ResBlock(nn.Module):
         out = self.relu(out)
         return out
 
+
 class D_GET_LOGITS(nn.Module):
     def __init__(self, ndf, nef, bcondition=True):
         super(D_GET_LOGITS, self).__init__()
@@ -307,6 +308,7 @@ class D_GET_LOGITS(nn.Module):
 
         output = self.outlogits(h_c_code)
         return output.view(-1)
+
 
 def conv3x3(in_channels, out_channels, stride=1):
     return nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False)
