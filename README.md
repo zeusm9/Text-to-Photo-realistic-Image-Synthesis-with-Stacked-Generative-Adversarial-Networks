@@ -1,4 +1,4 @@
-#Text to Photo realistic Image Synthesis with Stacked Generative Adversarial Networks
+# Text to Photo realistic Image Synthesis with Stacked Generative Adversarial Networks
 
 Pytorch implementation of [StackGAN: Text to Photo-realistic Image Synthesis with Stacked Generative Adversarial Networks](https://arxiv.org/pdf/1612.03242v2.pdf)  by Han Zhang, Tao Xu, Hongsheng Li, Shaoting Zhang, Xiaogang Wang, Xiaolei Huang, Dimitris Metaxas. using [CUB-200 dataset](http://www.vision.caltech.edu/visipedia/CUB-200.html).
 
@@ -6,19 +6,19 @@ Pytorch implementation of [StackGAN: Text to Photo-realistic Image Synthesis wit
 
 Text to image synthesis is a computer vision task having many practical applications. In this work I used stacked Generative Adversarial Networks to generate photo-realistic images conditioned on text descriptions.
 
-###Requirements
+### Requirements
 * Python 3.8
 * Pytorch
 * Numpy
 * Scipy
 
 
-###Data
+### Data
 
 1. Download preprocessed char-CNN-RNN text [embeddings for CUB-200](https://drive.google.com/file/d/0B3y_msrWZaXLT1BZdVdycDY5TEE/view), extract train and test folders and save them to data/birds/
 2. Download [CUB-200-2011 images data](https://drive.google.com/file/d/1hbzc_P1FuxMkcabkgn9ZKinBwW683j45/view). Extract them to data/birds/
 
-###Training
+### Training
 
 Train using stage 1 network:
 ```
