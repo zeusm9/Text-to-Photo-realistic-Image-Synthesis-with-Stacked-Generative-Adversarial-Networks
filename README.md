@@ -22,17 +22,17 @@ Text to image synthesis is a computer vision task having many practical applicat
 
 Train using stage 1 network:
 ```
-python main.py –data_dir ../data/birds –train y –stage 1
+python main.py –-data_dir ../data/birds –-train y –-stage 1
 ```
 
 Train using stage 2 network:
 ```
-python main.py –data_dir ../data/birds –train y –stage 2
+python main.py –-data_dir ../data/birds –-train y –-stage 2
 ```
 
 ### Evaluate and generate samples:
 ```
-python main.py –data_dir ../data/birds –train n
+python main.py –-data_dir ../data/birds –-train n
 ```
 
 ### References

@@ -8,7 +8,7 @@ WORKERS = 6
 
 NET_G = ''
 NET_D = ''
-STAGE1_G = '../data/birds/models/netG_epoch_360.pth'
+STAGE1_G = ''
 DATA_DIR = ''
 VAL_DIR = ''
 VIS_COUNT = 64
