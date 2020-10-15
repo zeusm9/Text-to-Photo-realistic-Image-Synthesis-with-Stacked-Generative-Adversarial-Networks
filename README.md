@@ -1,4 +1,4 @@
-#Text to Photo realistic Image Synthesis with Stacked Generative Adversarial Networks
+# Text to Photo realistic Image Synthesis with Stacked Generative Adversarial Networks
 
 Pytorch implementation of [StackGAN: Text to Photo-realistic Image Synthesis with Stacked Generative Adversarial Networks](https://arxiv.org/pdf/1612.03242v2.pdf)  by Han Zhang, Tao Xu, Hongsheng Li, Shaoting Zhang, Xiaogang Wang, Xiaolei Huang, Dimitris Metaxas. using [CUB-200 dataset](http://www.vision.caltech.edu/visipedia/CUB-200.html).
 
